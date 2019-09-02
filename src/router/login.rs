@@ -1,6 +1,14 @@
 use actix_web::{web, Responder};
+use serde::Deserialize;
 
-fn register() -> impl Responder {
+#[derive(Deserialize, Debug)]
+struct RegisterBody {
+    username: String,
+    password: String
+}
+
+fn register(body: web::Json<RegisterBody>) -> impl Responder {
+    println!("body: {:?}", body);
     format!("New auth")
 }
 

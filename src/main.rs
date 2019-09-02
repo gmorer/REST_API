@@ -14,7 +14,7 @@ fn main() -> std::io::Result<()> {
             web::scope("/").configure(login::config)
             // web::resource("/{name}/{id}/index.html").to(index))
         )
-        // .default_service(|| HttpResponse::MethodNotAllowed)
+        .default_service(web::route().to(|| HttpResponse::MethodNotAllowed()))
     )
     .bind("127.0.0.1:8080")?
     .run()

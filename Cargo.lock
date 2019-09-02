@@ -1137,6 +1137,7 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "actix-web 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
