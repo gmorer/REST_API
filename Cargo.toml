@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 actix-web = "1.0.7"
 serde = "1.0.99"
+dotenv = "0.14.1"
+postgres = "0.16.0-rc.2"
