@@ -1,57 +1,79 @@
-use postgres::{ Client, NoTls };
-use r2d2_postgres::PostgresConnectionManager;
-use r2d2::{ Pool };
+use diesel::r2d2::{ Pool, ConnectionManager };
+use diesel::pg::PgConnection;
+use diesel::prelude::*;
 
-#[derive(From)]
-pub enum Error {
-	R2d2Error(r2d2::Error),
-	PostgressError(postgres::error::Error)
-}
-
-const TABLE_MODEL: &str = "CREATE TABLE users (
+const _TABLE_MODEL: &str = "CREATE TABLE users (
         id         SERIAL PRIMARY KEY,
         username   TEXT NOT NULL,
         password   TEXT NOT NULL
     )";
 
-#[derive(Debug)]
+#[derive(From)]
+pub enum Error {
+	R2d2Error(r2d2::Error),
+	TablesError(diesel::result::Error)
+}
+
+#[derive(Debug, Queryable)]
 pub struct User {
 	id: i32,
 	username: String,
 	password: String
 }
 
-
-pub struct UserDb {
-	pool: Pool<PostgresConnectionManager<NoTls>>
+table! {
+	users (id) {
+		id -> Int4,
+		username -> Text,
+		password -> Text,
+	}
 }
 
+#[derive(Insertable)]
+#[table_name = "users"]
+pub struct NewUser<'a> {
+    pub username: &'a str,
+    pub password: &'a str,
+}
+
+pub struct UserDb {
+	pool: Pool<ConnectionManager<PgConnection>>
+}
 
 impl UserDb {
-    pub fn builder(client: &mut Client) {
-        client.simple_query(TABLE_MODEL).expect("Cannot create client table.");
-    }
+    // pub fn builder(client: &mut Client) {
+    //     client.simple_query(TABLE_MODEL).expect("Cannot create client table.");
+    // }
 
-	pub fn new(pool: Pool<PostgresConnectionManager<NoTls>>) -> Self {
+	pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
 		UserDb { pool }
 	}
 
 	pub fn get_all(&self) -> Result<String, Error> {
-		let mut res = Vec::new();
-		for row in self.pool.get()?.query("SELECT id username password FROM users", &[])? {
-			res.push(User {
-				id: row.get(0),
-				username: row.get(1),
-				password: row.get(2)
-			})
-		}
-		Ok(format!("{:?}", res))
+		// let mut res = Vec::new();
+		// for row in self.pool.get()?.query("SELECT id username password FROM users", &[])? {
+		// 	res.push(User {
+		// 		id: row.get(0),
+		// 		username: row.get(1),
+		// 		password: row.get(2)
+		// 	})
+		// }
+		// Ok(format!("{:?}", res))
+		use self::users::dsl::*;
+		let conn = self.pool.get()?;
+		users.limit(5)
+        	.load::<User>(&conn)
+        	.expect("Error loading posts");
+		println!("{:?}", users);
+		Ok("no implemented".to_string())
 	}
 
-    pub fn insert(&self, username: &str, password: &str) -> Result<u64, Error> {
-		self.pool.get()?.execute(
-            "INSERT INTO users (username, password) VALUES ($1, $2)",
-            &[&username, &password]
-        ).map_err(|e| e.into())
+    pub fn insert(&self, username: &str, password: &str) -> Result<User, Error> {
+		let conn = self.pool.get()?;
+		let new_user = NewUser { username, password };
+
+    	diesel::insert_into(users::table)
+    	    .values(&new_user)
+    	    .get_result(&conn).map_err(|e| e.into())
     }
 }

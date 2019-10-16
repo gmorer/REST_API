@@ -26,6 +26,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg
         .route("/register", web::post().to(register))
         .route("/login", web::post().to(login))
-        .route("/get_all", web::post().to(get_all))
+        .route("/get_all", web::get().to(get_all))
     ;
 }

@@ -1,8 +1,10 @@
 #[macro_use]
 extern crate derive_more;
+#[macro_use]
+extern crate diesel;
 use actix_web::{web, App, middleware, HttpServer, HttpResponse};
-use postgres::NoTls;
-use r2d2_postgres::PostgresConnectionManager;
+use diesel::r2d2::{ ConnectionManager, Pool };
+use diesel::pg::PgConnection;
 use dotenv::dotenv;
 use std::env;
 
@@ -16,23 +18,18 @@ fn main() -> std::io::Result<()> {
     
     dotenv().ok();
 
-    let db_host = env::var("DATABASE_HOST").expect("no database host");
-    let db_user = env::var("DATABASE_USER").expect("no database user");
-    let db_params = format!("host={} user={}", db_host, db_user);
-	let manager = PostgresConnectionManager::new(
-        db_params.parse().unwrap(),
-        NoTls,
-    );
-    let pool = r2d2::Pool::new(manager).expect("Cannot create database pool");
+    let db_host = env::var("DATABASE_URL").expect("no database host");
+	let manager: ConnectionManager<PgConnection> = ConnectionManager::new(db_host);
+    let pool = Pool::new(manager).expect("Cannot create database pool");
 	{
-    	UserDb::builder(&mut pool.clone().get().expect("Cannot get the first clone"));
+    	// UserDb::builder(&mut pool.clone().get().expect("Cannot get the first clone"));
 	}
+	println!("yeah...");
     HttpServer::new(move || App::new()
         .wrap(middleware::NormalizePath)
 		.data(UserDb::new(pool.clone()))
         .service(
             web::scope("/").configure(login::config)
-            // .data(user) TODO pass user to the login route 
         )
         .default_service(web::route().to(|| HttpResponse::MethodNotAllowed()))
     )
