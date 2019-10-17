@@ -1,8 +1,9 @@
-use diesel::r2d2::{ Pool, ConnectionManager };
+use diesel::dsl::sql;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 
-const _TABLE_MODEL: &str = "CREATE TABLE users (
+const TABLE_MODEL: &str = "CREATE TABLE users (
         id         SERIAL PRIMARY KEY,
         username   TEXT NOT NULL,
         password   TEXT NOT NULL
@@ -11,14 +12,14 @@ const _TABLE_MODEL: &str = "CREATE TABLE users (
 #[derive(From)]
 pub enum Error {
 	R2d2Error(r2d2::Error),
-	TablesError(diesel::result::Error)
+	TablesError(diesel::result::Error),
 }
 
 #[derive(Debug, Queryable)]
 pub struct User {
 	id: i32,
 	username: String,
-	password: String
+	password: String,
 }
 
 table! {
@@ -32,18 +33,20 @@ table! {
 #[derive(Insertable)]
 #[table_name = "users"]
 pub struct NewUser<'a> {
-    pub username: &'a str,
-    pub password: &'a str,
+	pub username: &'a str,
+	pub password: &'a str,
 }
 
 pub struct UserDb {
-	pool: Pool<ConnectionManager<PgConnection>>
+	pool: Pool<ConnectionManager<PgConnection>>,
 }
 
 impl UserDb {
-    // pub fn builder(client: &mut Client) {
-    //     client.simple_query(TABLE_MODEL).expect("Cannot create client table.");
-    // }
+	pub fn create_tab(
+		conn: PooledConnection<ConnectionManager<PgConnection>>,
+	) -> Result<usize, diesel::result::Error> {
+		sql::<()>(TABLE_MODEL).execute(&conn)
+	}
 
 	pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
 		UserDb { pool }
@@ -61,19 +64,21 @@ impl UserDb {
 		// Ok(format!("{:?}", res))
 		use self::users::dsl::*;
 		let conn = self.pool.get()?;
-		users.limit(5)
-        	.load::<User>(&conn)
-        	.expect("Error loading posts");
-		println!("{:?}", users);
+		let res = users
+			.limit(5)
+			.load::<User>(&conn)
+			.expect("Error loading posts");
+		println!("{:?}", res);
 		Ok("no implemented".to_string())
 	}
 
-    pub fn insert(&self, username: &str, password: &str) -> Result<User, Error> {
+	pub fn insert(&self, username: &str, password: &str) -> Result<User, Error> {
 		let conn = self.pool.get()?;
 		let new_user = NewUser { username, password };
 
-    	diesel::insert_into(users::table)
-    	    .values(&new_user)
-    	    .get_result(&conn).map_err(|e| e.into())
-    }
+		diesel::insert_into(users::table)
+			.values(&new_user)
+			.get_result(&conn)
+			.map_err(|e| e.into())
+	}
 }

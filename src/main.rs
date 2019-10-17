@@ -22,7 +22,7 @@ fn main() -> std::io::Result<()> {
 	let manager: ConnectionManager<PgConnection> = ConnectionManager::new(db_host);
     let pool = Pool::new(manager).expect("Cannot create database pool");
 	{
-    	// UserDb::builder(&mut pool.clone().get().expect("Cannot get the first clone"));
+    	UserDb::create_tab(pool.clone().get().expect("Cannot get the first clone"));
 	}
 	println!("yeah...");
     HttpServer::new(move || App::new()
